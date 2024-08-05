@@ -213,7 +213,7 @@ export class Converter {
    */
   convertConstToEnum() {
     const schemaVisitor: SchemaVisitor = (schema: SchemaObject): SchemaObject => {
-      if (schema['const']) {
+      if ('const' in schema) {
         const constant = schema['const'];
         delete schema['const'];
         schema['enum'] = [constant];
@@ -342,7 +342,16 @@ export class Converter {
    */
   convertJsonSchemaContentEncoding() {
     const schemaVisitor: SchemaVisitor = (schema: SchemaObject): SchemaObject => {
-      if (schema.hasOwnProperty('type') && schema['type'] === 'string' && schema.hasOwnProperty('contentEncoding')) {
+      let typeIsString = false;
+      if (schema.hasOwnProperty('type')) {
+        if (typeof schema['type'] === 'string') {
+          typeIsString = schema['type'] === 'string';
+        } else if (Array.isArray(schema['type'])) {
+          typeIsString = schema['type'].includes('string');
+        }
+      }
+
+      if (typeIsString && schema.hasOwnProperty('contentEncoding')) {
         if (schema['contentEncoding'] === 'base64') {
           if (schema.hasOwnProperty('format')) {
             if (schema['format'] === 'byte') {
@@ -358,6 +367,9 @@ export class Converter {
             schema['format'] = 'byte';
             this.log(`Converted schema: 'contentEncoding: base64' to 'format: byte'`);
           }
+        } else if (schema['contentEncoding'] === 'binary') {
+          delete schema['contentEncoding'];
+          schema['format'] = 'binary';
         } else {
           this.error(`Unable to down-convert contentEncoding: ${schema['contentEncoding']}`);
         }
